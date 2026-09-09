@@ -81,11 +81,3 @@ The workflow was tested using sample invoice PDFs covering:
 5. Configure Google Sheets.
 6. Update the relevant IDs, fields and filters.
 7. Test the workflow with a sample invoice before enabling it.
-
-## Notes
-
-This repository contains a workflow created for learning and experimentation.
-
-The sample invoice data is fictional.
-
-Never commit API keys, OAuth credentials, passwords, or other secrets to the repository.
