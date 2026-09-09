@@ -1,0 +1,665 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "has:attachment filename:pdf"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -64,
+        0
+      ],
+      "id": "12c1a527-c0f5-4f71-9a6d-836d0160ce99",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qzx9hftAr3BUGzQV",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "attachment_0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        176,
+        0
+      ],
+      "id": "ff4f3b87-2174-462d-bd1c-8458c2d1129d",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.text }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "vendor_name",
+              "description": "Name of the vendor or company issuing the invoice",
+              "required": true
+            },
+            {
+              "name": "invoice_number",
+              "description": "Invoice or bill reference number",
+              "required": true
+            },
+            {
+              "name": "total_amount",
+              "type": "number",
+              "description": "Total payable amount as a numeric value without currency symbols",
+              "required": true
+            },
+            {
+              "name": "due_date",
+              "description": "Payment due date in YYYY-MM-DD format"
+            },
+            {
+              "name": "invoice_date",
+              "description": "The date the invoice was issued (YYYY-MM-DD)"
+            },
+            {
+              "name": "currency",
+              "description": "3-letter currency code (e.g. USD, EUR, INR)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        0
+      ],
+      "id": "b7ecf468-bece-4598-a069-e4aa30ad8ef8",
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini",
+          "cachedResultUrl": ""
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        384,
+        208
+      ],
+      "id": "d6cf4144-b22e-4a5a-958b-28fdb1da5393",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "GbJzmxVO6kWuDeKe",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "invoices",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "invoice_number",
+              "condition": "eq",
+              "keyValue": "={{ $('Code in JavaScript').first().json.invoice_number }}"
+            },
+            {
+              "keyName": "vendor_name",
+              "condition": "eq",
+              "keyValue": "={{ $('Code in JavaScript').first().json.vendor_name }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        -208
+      ],
+      "id": "b93f2e0f-c66d-4012-88d4-adc9e8420391",
+      "name": "Get many rows",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "7ddJloYaNaxL0EQq",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "795559ba-fcdc-4214-876c-018c8c148e8f",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1280,
+        -208
+      ],
+      "id": "9a28ebeb-2fb6-498c-9d73-4ed103fc13e1",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "tableId": "invoices",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "vendor_name",
+              "fieldValue": "={{ $('Information Extractor').item.json.output.vendor_name }}"
+            },
+            {
+              "fieldId": "invoice_number",
+              "fieldValue": "={{ $('Information Extractor').item.json.output.invoice_number }}"
+            },
+            {
+              "fieldId": "total_amount",
+              "fieldValue": "={{ $('Information Extractor').item.json.output.total_amount }}"
+            },
+            {
+              "fieldId": "due_date",
+              "fieldValue": "={{ $('Information Extractor').item.json.output.due_date }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "pending"
+            },
+            {
+              "fieldId": "invoice_date",
+              "fieldValue": "={{ $('Information Extractor').first().json.output.invoice_date }}"
+            },
+            {
+              "fieldId": "currency",
+              "fieldValue": "={{ $('Information Extractor').first().json.output.currency }}"
+            },
+            {
+              "fieldId": "gmail_message_id",
+              "fieldValue": "={{ $('Gmail Trigger').first().json.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1568,
+        -32
+      ],
+      "id": "15789b59-2209-401d-9348-fe6fc2d0c378",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "7ddJloYaNaxL0EQq",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=dheerazd91@gmail.com",
+        "subject": "=Duplicate Invoice Alert: {{ $('Information Extractor').item.json.output.invoice_number }}",
+        "message": "=A duplicate invoice was received and skipped:  • Vendor: {{ $('Information Extractor').item.json.output.vendor_name }} • Invoice #: {{ $('Information Extractor').item.json.output.invoice_number }} • Total: ${{ $('Information Extractor').item.json.output.total_amount }} • Due Date: {{ $('Information Extractor').item.json.output.due_date }}  This invoice already exists in the database.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        -224
+      ],
+      "id": "f4ff52c0-1c73-4ed2-8b4d-3d8902ced04b",
+      "name": "Send a message",
+      "webhookId": "8e1a0f93-0481-48ab-ba53-503a09f0879c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qzx9hftAr3BUGzQV",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "Label_8377589822069290249"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1888,
+        -32
+      ],
+      "id": "4b7b23c1-8316-4351-86b3-1c3b8562e6b5",
+      "name": "Add label to message",
+      "webhookId": "d4030617-848c-484a-879e-ac8e923e7adf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qzx9hftAr3BUGzQV",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1vISG6O1n4kO64PVmm0sAG7UpV_NeDv87p_RdfhL2OO4",
+          "mode": "list",
+          "cachedResultName": "Invoice tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vISG6O1n4kO64PVmm0sAG7UpV_NeDv87p_RdfhL2OO4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vISG6O1n4kO64PVmm0sAG7UpV_NeDv87p_RdfhL2OO4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Vendor Name": "={{ $('Information Extractor').item.json.output.vendor_name }}",
+            "Invoice Number": "={{ $('Information Extractor').item.json.output.invoice_number }}",
+            "Amount": "={{ $('Information Extractor').item.json.output.total_amount }}",
+            "Due Date": "={{ $('Information Extractor').item.json.output.due_date }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Vendor Name",
+              "displayName": "Vendor Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Invoice Number",
+              "displayName": "Invoice Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1728,
+        -32
+      ],
+      "id": "b67e4ec3-3406-4b43-a43c-0f94aa429f07",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "6r3YpoVUqNohYx9T",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Grab input JSON\nconst input = $input.first().json;\n\n// 2. Unwrap the nested \"output\" object from the Information Extractor\nconst raw = input.output || input;\n\n// 3. Normalization helpers\nconst cleanStr = (val) => (typeof val === 'string' ? val.trim() : '');\nconst cleanInvoiceNum = (val) => cleanStr(val).replace(/\\s+/g, '-').toUpperCase();\nconst cleanVendor = (val) => cleanStr(val).toLowerCase().replace(/\\b\\w/g, c => c.toUpperCase());\n\nconst parseAmount = (val) => {\n  if (typeof val === 'number') return val;\n  if (typeof val === 'string') {\n    const cleaned = val.replace(/[^0-9.-]+/g, '');\n    return parseFloat(cleaned) || null;\n  }\n  return null;\n};\n\n// 4. Read fields\nconst rawInvoiceNum = raw.invoice_number || raw.invoiceNumber || raw.invoice_no;\nconst rawVendor = raw.vendor_name || raw.vendorName || raw.vendor;\nconst rawTotal = raw.total_amount || raw.totalAmount || raw.total;\nconst rawCurrency = raw.currency || raw.currency_code;\nconst rawInvoiceDate = raw.invoice_date || raw.invoiceDate || raw.date;\nconst rawDueDate = raw.due_date || raw.dueDate;\n\n// 5. Clean & normalize\nconst invoice_number = cleanInvoiceNum(rawInvoiceNum);\nconst vendor_name = cleanVendor(rawVendor);\nconst total_amount = parseAmount(rawTotal);\nconst currency = cleanStr(rawCurrency || 'INR').toUpperCase();\nconst invoice_date = cleanStr(rawInvoiceDate);\nconst due_date = cleanStr(rawDueDate);\n\n// 6. Validation checks\nconst errors = [];\nif (!invoice_number) errors.push('Missing invoice number');\nif (!vendor_name) errors.push('Missing vendor name');\nif (!total_amount || total_amount <= 0) errors.push('Invalid or missing total amount');\nif (!invoice_date) errors.push('Missing invoice date');\n\nconst is_valid = errors.length === 0;\n\nreturn [{\n  json: {\n    vendor_name,\n    invoice_number,\n    total_amount,\n    currency,\n    invoice_date,\n    due_date,\n    gmail_message_id: $('Gmail Trigger').first().json.id,\n    is_valid,\n    errors\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        0
+      ],
+      "id": "92427301-7e96-4cb0-b45c-9befc8adc266",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').first().json.id }}",
+        "labelIds": [
+          "Label_4713927046795533025"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1472,
+        -224
+      ],
+      "id": "38318efc-a807-47cb-9af6-2e3c53bac2a2",
+      "name": "Label as Duplicate",
+      "webhookId": "d4030617-848c-484a-879e-ac8e923e7adf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qzx9hftAr3BUGzQV",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f8b213f2-b081-49a3-ab22-a5e5672fe23d",
+              "leftValue": "={{ $json.is_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        848,
+        -160
+      ],
+      "id": "89750ebf-8cf3-4c5a-806c-45137dc74723",
+      "name": "is valid"
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').first().json.id }}",
+        "labelIds": [
+          "Label_1246537016560063682"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1056,
+        -16
+      ],
+      "id": "76b75950-8600-410f-b13f-ca93b6c35826",
+      "name": "Label as Needs Review",
+      "webhookId": "d4030617-848c-484a-879e-ac8e923e7adf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qzx9hftAr3BUGzQV",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=dheerazd91@gmail.com",
+        "subject": "=⚠️ Action Required: Invoice Extraction Failed (Needs Review)",
+        "message": "=An incoming email attachment failed validation checks and was blocked from database entry.\n\n• Message ID: {{ $('Gmail Trigger').first().json.id }}\n• Extracted Vendor: {{ $('Code in JavaScript').first().json.vendor_name || 'N/A' }}\n• Extracted Invoice #: {{ $('Code in JavaScript').first().json.invoice_number || 'N/A' }}\n• Validation Issues: {{ $('Code in JavaScript').first().json.errors ? $('Code in JavaScript').first().json.errors.join(', ') : 'Malformed document' }}\n\nThe original email has been tagged with the 'Invoice/Needs-Review' label in Gmail for manual inspection.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1296,
+        -16
+      ],
+      "id": "8e20fe8d-2e7a-48ed-a5d3-19f7c7b3ac32",
+      "name": "Send Review Alert",
+      "webhookId": "8e1a0f93-0481-48ab-ba53-503a09f0879c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qzx9hftAr3BUGzQV",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Label as Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to message": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "is valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Add label to message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label as Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is valid": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label as Needs Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label as Needs Review": {
+      "main": [
+        [
+          {
+            "node": "Send Review Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c44becde-c8dd-469e-b81d-9b8de269885f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2f2335a843c40a382a80963c564e5205a7adc13cb4e8351bc041d75424baf945"
+  },
+  "nodeGroups": [],
+  "id": "Ypz0Lz4hU4IgQYbF",
+  "tags": []
+}
